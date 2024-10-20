@@ -17,47 +17,56 @@ import java.util.List;
 @Service
 public class SpiderServiceImpl implements SpiderService {
 
-    private static final String URL = "https://bbs.hupu.com";
-
-    private List<HuPuList> getItemList(Elements list) {
-        List<HuPuList> hupuL = new ArrayList<>();
-        for (Element listItem : list) {
-            HuPuList hupuListObj = new HuPuList();
-            Element parent = listItem.parent();
-            Element ele = parent;
-            List<HuPu> huPuList = new ArrayList<>();
-            for (int i = 1; i < 11; i++) {
-                HuPu huPu = new HuPu();
-                Element item = ele.nextElementSibling();
-                String href = item.getElementsByTag("a").get(0).attr("href");
-                huPu.setTitle(item.text());
-                huPu.setUrl(href);
-                ele = item;
-                huPuList.add(huPu);
-            }
-            hupuListObj.setCategory(parent.text());
-            hupuListObj.setHuPuList(huPuList);
-            hupuL.add(hupuListObj);
-        }
-        return hupuL;
-    }
+    private static final String URL = "https://bbs.hupu.com";//虎扑论坛基本url
 
     @Override
-    public Result getHotTitle() {
+    public Result getHotTitle() {//获取热榜标题
         try {
             Document document = Jsoup.connect(URL)
                     .ignoreContentType(true)
-                    .get();
-            Elements list = document.getElementsByClass("list-title");
-            List<HuPuList> itemList = getItemList(list);
-            for (HuPuList hu : itemList) {
-                System.out.println(hu);
-            }
+                    .get();//使用Jsoup库连接到虎扑热帖榜主页，获取网页内容并解析为一个Document对象
+            Elements list = document.getElementsByClass("list-title");//获取热帖榜六大主板块信息
             return Result.success(getItemList(list));
         } catch (Exception e) {
             e.printStackTrace();
         }
         return Result.error("热帖标题获取失败");
+    }
+
+    private List<HuPuList> getItemList(Elements list) {//获取板块内帖子的概略信息
+        List<HuPuList> hupuL = new ArrayList<>();//存储热帖榜所有板块总概略信息
+        for (Element listItem : list) {
+            HuPuList hupuListObj = new HuPuList();//存储当前板块的概略信息
+            Element parent = listItem.parent();//获取父元素
+            Element ele = parent;
+            List<HuPu> huPuList = new ArrayList<>();//存储当前板块帖子的概略信息
+            for (int i = 0; i < 10; i++) {
+                HuPu huPu = new HuPu();//存储当前帖子的概略信息
+                Element item = ele.nextElementSibling();//获取下一个兄弟元素
+                String href = item.getElementsByTag("a").get(0).attr("href");
+                String regex = "\\d+亮\\d+回复";
+                java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(regex);
+                java.util.regex.Matcher matcher = pattern.matcher(item.text());
+                String text_removed= item.text();
+                if (matcher.find()) {
+                    String match = matcher.group();
+                    String[] parts = match.split("亮|回复");
+                    text_removed = item.text().substring(0, matcher.start()).trim();
+                    huPu.setLightNum(Integer.parseInt(parts[0]));
+                    huPu.setRepliesNum(Integer.parseInt(parts[1]));
+                }
+                huPu.setTitle(text_removed.replaceAll("^\\[.*?\\]\\s*", ""));
+                huPu.setUrl(URL+href);
+                huPu.setHupuId(href.replaceAll("[^0-9]", ""));
+                huPu.setLabel(parent.text());
+                ele = item;
+                huPuList.add(huPu);
+            }
+            hupuListObj.setCategory(parent.text());//板块类别
+            hupuListObj.setHuPuList(huPuList);//板块帖子概略信息
+            hupuL.add(hupuListObj);
+        }
+        return hupuL;
     }
 
     public HuPuInfo getInfo(String id) {

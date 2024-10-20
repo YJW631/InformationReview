@@ -7,7 +7,7 @@ import java.util.List;
 
 @Data
 @ToString
-public class HuPuList {
+public class HuPuList {//热帖榜每个板块信息
     /**
      * 类目
      */

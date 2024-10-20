@@ -13,20 +13,24 @@
             margin: 0; /* 去掉默认的外边距 */
             padding: 0; /* 去掉默认的内边距 */
         }
-        .el-container{
+
+        .el-container {
             height: 100%;
         }
-        .el-header{
+
+        .el-header {
             background-color: azure;
             color: #333;
             text-align: center;
         }
+
         .el-main {
             background-color: white;
             color: #333;
             text-align: center;
         }
-        .el-menu{
+
+        .el-menu {
             background-color: azure;
             width: 100%;
         }
@@ -37,21 +41,26 @@
     <el-container>
         <el-header>
             <el-menu :default-active="activeMenu" mode="horizontal">
-            <el-menu-item index="1" @click="navigate('/index.html')">热帖榜</el-menu-item>
-            <el-menu-item index="2" @click="navigate('/info.html')">评论</el-menu-item>
-            <el-menu-item index="3" @click="navigate('/warn.html')">安全审查</el-menu-item>
-            <el-menu-item index="4" @click="navigate('/summary.html')">观点分析</el-menu-item>
-        </el-menu>
+                <el-menu-item index="1" @click="navigate('/index.html')">热帖榜</el-menu-item>
+                <el-menu-item index="2" @click="navigate('/info.html')">评论</el-menu-item>
+                <el-menu-item index="3" @click="navigate('/warn.html')">安全审查</el-menu-item>
+                <el-menu-item index="4" @click="navigate('/summary.html')">观点分析</el-menu-item>
+            </el-menu>
         </el-header>
         <el-main>
             <template>
                 <el-table
-                        :data="tableData"
+                        :data="hotInfo"
                         style="width: 100%">
                     <el-table-column
-                            prop="category"
+                            prop="label"
                             label="板块"
                             width="100">
+                    </el-table-column>
+                    <el-table-column
+                            prop="hupuId"
+                            label="id号"
+                            width="150">
                     </el-table-column>
                     <el-table-column
                             prop="title"
@@ -59,8 +68,21 @@
                             width="600">
                     </el-table-column>
                     <el-table-column
-                            prop="href"
+                            prop="lightNum"
+                            label="点亮数"
+                            width="100">
+                    </el-table-column>
+                    <el-table-column
+                            prop="repliesNum"
+                            label="评论数"
+                            width="100">
+                    </el-table-column>
+                    <el-table-column
+                            prop="url"
                             label="地址">
+                        <template slot-scope="scope">
+                            <a :href="scope.row.url" target="_blank">{{ scope.row.url }}</a>
+                        </template>
                     </el-table-column>
                 </el-table>
             </template>
@@ -71,17 +93,33 @@
 </body>
 <script>
     new Vue({
-        el:'#app',
-        data:{
-            activeMenu:'1',
-            hotInfo:[]
+        el: '#app',
+        data: {
+            activeMenu: '1',
+            hotInfo: []
         },
-        created:function (){
-
+        created: function () {
+            this.getHotInfo();
         },
-        methods:{
+        methods: {
             navigate(url) {
                 window.location.href = url;
+            },
+            async getHotInfo() {//获取当前热门话题列表
+                try {
+                    const resp = await axios.get('/hot', {});
+                    if (resp.data.code == 1) {
+                        resp.data.data.forEach(item => {
+                            item.huPuList.forEach(hupu => {
+                                this.hotInfo.push(hupu);
+                            });
+                        });
+                    } else {
+                        console.error('获取失败', error);
+                    }
+                } catch (error) {
+                    console.error('获取失败', error);
+                }
             }
         }
     })

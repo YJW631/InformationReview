@@ -5,10 +5,11 @@ import lombok.ToString;
 
 @Data
 @ToString
-/**
- * 首页展示用
- */
-public class HuPu {
+public class HuPu {//帖子概略信息
+    /**
+     * 帖子的id
+     */
+    private String hupuId;
     /**
      * 帖子的链接
      */
@@ -20,11 +21,11 @@ public class HuPu {
     /**
      * 帖子的点赞量
      */
-    private String lightNum;
+    private Integer lightNum;
     /**
      * 帖子的回复量
      */
-    private String replies;
+    private Integer repliesNum;
     /**
      * 帖子的类目
      */
