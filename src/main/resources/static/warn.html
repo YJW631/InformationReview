@@ -1,0 +1,69 @@
+<html>
+<head>
+    <title>安全审查</title>
+    <meta http-equiv="content-type" content="text/html;charset=UTF-8">
+    <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.7.1/jquery.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <style>
+        html, body, #app {
+            height: 100%;
+            margin: 0; /* 去掉默认的外边距 */
+            padding: 0; /* 去掉默认的内边距 */
+        }
+        .el-container{
+            height: 100%;
+        }
+        .el-header{
+            background-color: azure;
+            color: #333;
+            text-align: center;
+        }
+        .el-main {
+            background-color: white;
+            color: #333;
+            text-align: center;
+        }
+        .el-menu{
+            background-color: azure;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <el-container>
+        <el-header>
+            <el-menu :default-active="activeMenu" mode="horizontal">
+                <el-menu-item index="1" @click="navigate('/index.html')">热帖榜</el-menu-item>
+                <el-menu-item index="2" @click="navigate('/info.html')">评论</el-menu-item>
+                <el-menu-item index="3" @click="navigate('/warn.html')">安全审查</el-menu-item>
+                <el-menu-item index="4" @click="navigate('/summary.html')">观点分析</el-menu-item>
+        </el-menu>
+        </el-header>
+        <el-main>
+
+        </el-main>
+    </el-container>
+</div>
+
+</body>
+<script>
+    new Vue({
+        el:'#app',
+        data:{
+            activeMenu:'3'
+        },
+        created:function (){
+
+        },
+        methods:{
+            navigate(url) {
+                window.location.href = url;
+            }
+        }
+    })
+</script>
+</html>
