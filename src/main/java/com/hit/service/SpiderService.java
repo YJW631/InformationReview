@@ -1,8 +1,12 @@
 package com.hit.service;
 
 import com.hit.pojo.Result;
+import com.hit.vo.Comment;
+import com.hit.vo.HuPuList;
 import org.springframework.stereotype.Service;
 
 public interface SpiderService{
     Result getHotTitle();//获取热榜信息
+
+    Comment getComments(String hupuId);//根据帖子id获取评论
 }

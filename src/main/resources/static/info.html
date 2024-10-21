@@ -7,6 +7,13 @@
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
     <script src="https://unpkg.com/element-ui/lib/index.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css"
+          integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap-theme.min.css"
+          integrity="sha384-6pzBo3FDv/PJ8r2KRkGHifhEocL+1X2rVCTTkUfGk7/0pbek5mMa1upzvWbrUbOZ" crossorigin="anonymous">
+    <script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js"
+            integrity="sha384-aJ21OjlMXNL5UyIl/XNwTMqvzeRMZH2w8c5cRVpzpU8Y5bApTppSuUkhZXN0VxHd"
+            crossorigin="anonymous"></script>
     <style>
         html, body, #app {
             height: 100%;
@@ -44,7 +51,27 @@
         </el-menu>
         </el-header>
         <el-main>
-
+            <form class="navbar-form navbar-left" @submit.prevent="handleSearch" style="display: flex; align-items: center;">
+                <div class="form-group">
+                    <input type="text" class="form-control" placeholder="请输入id号" v-model="searchText" style="width: 420px; margin-right: 5px;">
+                </div>
+                <el-button type="primary" plain @click="handleSearch" style="height: 34px;">搜索</el-button>
+            </form>
+            <template>
+                <el-table
+                        :data="commentList"
+                        style="width: 100%">
+                    <el-table-column
+                            prop="index"
+                            label="序号"
+                            width="100">
+                    </el-table-column>
+                    <el-table-column
+                            prop="comment"
+                            label="评论">
+                    </el-table-column>
+                </el-table>
+            </template>
         </el-main>
     </el-container>
 </div>
@@ -54,7 +81,9 @@
     new Vue({
         el:'#app',
         data:{
-            activeMenu:'2'
+            activeMenu:'2',
+            searchText:'',
+            commentList:[]
         },
         created:function (){
 
@@ -62,6 +91,30 @@
         methods:{
             navigate(url) {
                 window.location.href = url;
+            },
+            handleSearch() {
+                console.log('搜索内容：', this.searchText);
+            },
+            async handleSearch() {
+                try {
+                    const resp = await axios.get('/info', {
+                        params: {
+                            hupuId:this.searchText
+                        }
+                    });
+                    if (resp.data.code == 1) {
+                        this.commentList=resp.data.data.reviews.map((str, index) => {
+                            return {
+                                index: index + 1,
+                                comment: str
+                            };
+                        });
+                    } else {
+                        console.error('获取失败');
+                    }
+                } catch (error) {
+                    console.error('获取失败', error);
+                }
             }
         }
     })

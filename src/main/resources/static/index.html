@@ -61,6 +61,13 @@
                             prop="hupuId"
                             label="id号"
                             width="150">
+                        <template slot-scope="scope">
+                            <el-tooltip content="点击复制" placement="top">
+          <span @click="copyToClipboard(scope.row.hupuId)" style="cursor: pointer; color: #32a2a8;">
+            {{ scope.row.hupuId }}
+          </span>
+                            </el-tooltip>
+                        </template>
                     </el-table-column>
                     <el-table-column
                             prop="title"
@@ -120,6 +127,13 @@
                 } catch (error) {
                     console.error('获取失败', error);
                 }
+            },
+            copyToClipboard(text) {
+                navigator.clipboard.writeText(text).then(() => {
+                    this.$message.success('复制成功!');
+                }).catch(err => {
+                    console.error('复制失败: ', err);
+                });
             }
         }
     })
