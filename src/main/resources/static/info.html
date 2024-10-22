@@ -20,22 +20,32 @@
             margin: 0; /* 去掉默认的外边距 */
             padding: 0; /* 去掉默认的内边距 */
         }
-        .el-container{
+
+        .el-container {
             height: 100%;
         }
-        .el-header{
+
+        .el-header {
             background-color: azure;
             color: #333;
             text-align: center;
         }
+
         .el-main {
             background-color: white;
             color: #333;
             text-align: center;
         }
-        .el-menu{
+
+        .el-menu {
             background-color: azure;
             width: 100%;
+        }
+
+        .radio-item {
+            display: block;
+            margin-bottom: 10px;
+            text-align: left;
         }
     </style>
 </head>
@@ -48,29 +58,74 @@
                 <el-menu-item index="2" @click="navigate('/info.html')">评论</el-menu-item>
                 <el-menu-item index="3" @click="navigate('/warn.html')">安全审查</el-menu-item>
                 <el-menu-item index="4" @click="navigate('/summary.html')">观点分析</el-menu-item>
-        </el-menu>
+            </el-menu>
         </el-header>
         <el-main>
-            <form class="navbar-form navbar-left" @submit.prevent="handleSearch" style="display: flex; align-items: center;">
+            <form class="navbar-form navbar-left" @submit.prevent="handleSearch"
+                  style="display: flex; align-items: center;">
                 <div class="form-group">
-                    <input type="text" class="form-control" placeholder="请输入id号" v-model="searchText" style="width: 420px; margin-right: 5px;">
+                    <input type="text" class="form-control" placeholder="请输入id号" v-model="searchText"
+                           style="width: 420px; margin-right: 5px;">
                 </div>
                 <el-button type="primary" plain @click="handleSearch" style="height: 34px;">搜索</el-button>
+
+                <el-button type="primary" plain @click="sentimentAnalysis" style="height: 34px;">情感解析</el-button>
             </form>
             <template>
                 <el-table
                         :data="commentList"
                         style="width: 100%">
                     <el-table-column
-                            prop="index"
                             label="序号"
+                            width="80">
+                        <template slot-scope="scope">
+                            {{ scope.$index + 1 }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column
+                            prop="pid"
+                            label="评论id"
                             width="100">
                     </el-table-column>
                     <el-table-column
-                            prop="comment"
+                            prop="review"
                             label="评论">
                     </el-table-column>
+                    <el-table-column
+                            label="情感倾向"
+                            prop="attitude"
+                            width="100">
+                        <template slot-scope="scope">
+    <span :style="{ color: scope.row.attitude === -1 ? 'gray' : scope.row.attitude === 0 ? 'red' : 'green' }">
+      {{ scope.row.attitude === -1 ? '未知' : scope.row.attitude === 0 ? '负面' : '正面' }}
+    </span>
+                        </template>
+                    </el-table-column>
+                    <el-table-column
+                            label="操作"
+                            width="80">
+                        <template slot-scope="scope">
+                            <el-button type="danger" @click="openReportDialog(scope.row.pid)">举报</el-button>
+                        </template>
+                    </el-table-column>
                 </el-table>
+                <el-dialog
+                        title="选择举报理由"
+                        :visible.sync="reportDialogVisible"
+                        width="30%">
+                    <el-radio-group v-model="type">
+                        <el-radio :label="'1'" class="radio-item">违反法律法规、时政敏感、精外等危险内容</el-radio>
+                        <el-radio :label="'2'" class="radio-item">未经许可的广告、水军账号</el-radio>
+                        <el-radio :label="'3'" class="radio-item">色情淫秽、血腥暴恐等引起不适的内容</el-radio>
+                        <el-radio :label="'4'" class="radio-item">低俗谩骂、阴阳怪气、攻击引战、跨区嘲讽</el-radio>
+                        <el-radio :label="'5'" class="radio-item">恶意歪曲事实、造谣造假、编故事</el-radio>
+                        <el-radio :label="'6'" class="radio-item">其他违反版规的行为</el-radio>
+                    </el-radio-group>
+                    <div slot="footer" class="dialog-footer">
+                        <el-button @click="reportDialogVisible = false">取消</el-button>
+                        <el-button type="primary" @click="reportComment">确定</el-button>
+                    </div>
+                </el-dialog>
             </template>
         </el-main>
     </el-container>
@@ -79,16 +134,22 @@
 </body>
 <script>
     new Vue({
-        el:'#app',
-        data:{
-            activeMenu:'2',
-            searchText:'',
-            commentList:[]
+        el: '#app',
+        data: {
+            activeMenu: '2',
+            searchText: '',
+            comment: [],
+            commentList: [],
+            reportDialogVisible: false,
+            type: '6',
+            reportPid: '',
+            reportContentList: ['违反法律法规、时政敏感、精外等危险内容', '未经许可的广告、水军账号', '色情淫秽、血腥暴恐等引起不适的内容', '低俗谩骂、阴阳怪气、攻击引战、跨区嘲讽', '恶意歪曲事实、造谣造假、编故事', '其他违反版规的行为'],
+            attitudes: ''
         },
-        created:function (){
+        created: function () {
 
         },
-        methods:{
+        methods: {
             navigate(url) {
                 window.location.href = url;
             },
@@ -99,23 +160,95 @@
                 try {
                     const resp = await axios.get('/info', {
                         params: {
-                            hupuId:this.searchText
+                            hupuId: this.searchText
                         }
                     });
                     if (resp.data.code == 1) {
-                        this.commentList=resp.data.data.reviews.map((str, index) => {
-                            return {
-                                index: index + 1,
-                                comment: str
-                            };
-                        });
+                        this.comment = resp.data.data
+                        this.commentList = resp.data.data.reviews
+                        for (let i = 0; i < this.commentList.length; i++) {
+                            this.commentList[i].attitude = -1
+                        }
                     } else {
                         console.error('获取失败');
                     }
                 } catch (error) {
                     console.error('获取失败', error);
                 }
+            },
+            openReportDialog(pid) {
+                this.reportPid = pid;
+                this.type = 6;
+                this.reportDialogVisible = true;
+            },
+            async reportComment() {
+                const proxyUrl = 'http://localhost:8080/';
+                const url = `https://bbs.hupu.com/api/v2/threads/${this.comment.hupuId}/report`;
+                const data = {
+                    tid: this.comment.hupuId,
+                    pid: this.reportPid,
+                    topicId: this.comment.topicId,
+                    type: this.type,
+                    content: this.reportContentList[this.type]
+                };
+
+                try {
+                    const response = await fetch(proxyUrl + url, {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'accept': '*/*',
+                            'sec-ch-ua': '"Google Chrome";v="129", "Not=A?Brand";v="8", "Chromium";v="129"',
+                            'sec-ch-ua-mobile': '?0',
+                            'sec-ch-ua-platform': '"Windows"',
+                            'sec-fetch-dest': 'empty',
+                            'sec-fetch-mode': 'cors',
+                            'sec-fetch-site': 'same-origin',
+                            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36'
+                        },
+                        body: JSON.stringify(data)
+                    });
+
+                    const result = await response.json();
+                    if (response.ok && result.code === 1) {
+                        this.$message.success('举报成功');
+                    } else {
+                        this.$message.error('举报失败');
+                        console.error('举报失败:', result);
+                    }
+                } catch (error) {
+                    this.$message.error('举报请求失败');
+                    console.error('举报请求失败', error);
+                }
             }
+
+            ,
+            async sentimentAnalysis() {
+                const reviews = this.commentList.map(item => item.review);
+                try {
+                    const resp = await axios.post('http://127.0.0.1:8081/predict', {texts: reviews}, {
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    if (resp.data) {
+                        this.attitudes = resp.data;
+                        const updatedCommentList = this.commentList.map((item, index) => {
+                            return {
+                                ...item,
+                                attitude: this.attitudes[index]
+                            };
+                        });
+                        this.commentList = updatedCommentList;  // 触发Vue的响应式更新
+                    } else {
+                        console.error('分析失败：无返回数据');
+                    }
+                } catch (error) {
+                    console.error('分析失败', error.response ? error.response.data : error.message);
+                }
+            }
+
         }
     })
 </script>

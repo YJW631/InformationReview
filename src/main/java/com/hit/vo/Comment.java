@@ -13,8 +13,12 @@ public class Comment {
      */
     private String hupuId;
     /**
-     * 帖子的id
+     * 帖子所属话题的id
+     */
+    private String topicId;
+    /**
+     * 帖子的评论
      * 记录前三十条
      */
-    private List<String> reviews;
+    private List<Review> reviews;
 }

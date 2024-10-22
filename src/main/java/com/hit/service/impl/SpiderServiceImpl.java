@@ -5,6 +5,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.hit.pojo.Result;
 import com.hit.service.SpiderService;
 import com.hit.vo.*;
+import com.sun.org.apache.bcel.internal.generic.GOTO;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -12,7 +13,9 @@ import org.jsoup.select.Elements;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class SpiderServiceImpl implements SpiderService {
@@ -35,7 +38,7 @@ public class SpiderServiceImpl implements SpiderService {
 
     @Override
     public Comment getComments(String hupuId) {
-        List<String> commentList = new ArrayList<>();
+        List<Review> commentList = new ArrayList<>();
         Comment comment = new Comment();
         comment.setHupuId(hupuId);
         int count = 0;
@@ -52,6 +55,19 @@ public class SpiderServiceImpl implements SpiderService {
                 lastPageStr = paginationItem.text();
             }
             lastPage = Integer.parseInt(lastPageStr);
+            Map<String, String> topicIdList = new HashMap<>();
+            topicIdList.put("/cba","173");
+            topicIdList.put("/topic-daily","1");
+            Elements topicLinks = document.select(".post-user_post-user-comp-info-bottom-from__6aulb a.post-user_post-user-comp-info-bottom-link__BMF8U");
+            String topicStr = null;
+            for (Element topicLink : topicLinks){
+                topicStr=topicLink.attr("href");
+            }
+            if(topicIdList.get(topicStr)!=null){
+                comment.setTopicId(topicIdList.get(topicStr));
+            }else {
+                comment.setTopicId("1");
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -62,18 +78,26 @@ public class SpiderServiceImpl implements SpiderService {
         }
         while (count < 50 && pageId <= lastPage) {
             try {
-                Document document = Jsoup.connect("https://bbs.hupu.com/"+hupuId + "-" + pageId + ".html")
+                Document document = Jsoup.connect("https://bbs.hupu.com/" + hupuId + "-" + pageId + ".html")
                         .ignoreContentType(true)
                         .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36")
                         .get();
-                Elements comments = document.select(".post-wrapper_gray__HNv4A .post-reply-list-content .thread-content-detail p");
+//                Elements comments = document.select(".post-wrapper_gray__HNv4A .post-reply-list-content .thread-content-detail p");
+                Elements comments = document.select(".post-wrapper_gray__HNv4A .post-reply-list");
                 for (Element commentElement : comments) {
+                    String commentId = commentElement.select("span").attr("id");
+                    Elements commentDetails = commentElement.select(".post-reply-list-content .thread-content-detail p");
                     if (count >= 50) {
                         break;
                     }
-                    if (commentElement.select("img").isEmpty()) {
-                        commentList.add(commentElement.text().trim());
-                        count++;
+                    for (Element detail : commentDetails) {
+                        if (detail.select("img").isEmpty()) {
+                            Review review = new Review();
+                            review.setReview(detail.text().trim());
+                            review.setPid(commentId);
+                            commentList.add(review);
+                            count++;
+                        }
                     }
                 }
             } catch (Exception e) {
