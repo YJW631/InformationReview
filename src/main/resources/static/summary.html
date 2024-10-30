@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 <head>
     <title>观点总结</title>
@@ -13,22 +14,55 @@
             margin: 0; /* 去掉默认的外边距 */
             padding: 0; /* 去掉默认的内边距 */
         }
-        .el-container{
+
+        .el-container {
             height: 100%;
+            flex-direction: column;
         }
-        .el-header{
+
+        .el-header {
             background-color: azure;
             color: #333;
             text-align: center;
         }
+
         .el-main {
             background-color: white;
             color: #333;
-            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
-        .el-menu{
+
+        .el-menu {
             background-color: azure;
             width: 100%;
+        }
+
+        .form-container {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .results-container {
+            display: flex;
+            width: 100%;
+        }
+
+        .wordcloud-container, .summary-container {
+            flex: 1;
+            padding: 20px;
+            text-align: center;
+        }
+        .form-inline {
+            display: flex;
+            align-items: center;
+        }
+
+        .form-inline .el-form-item {
+            margin-right: 20px;
         }
     </style>
 </head>
@@ -41,29 +75,89 @@
                 <el-menu-item index="2" @click="navigate('/info.html')">评论</el-menu-item>
                 <el-menu-item index="3" @click="navigate('/warn.html')">安全审查</el-menu-item>
                 <el-menu-item index="4" @click="navigate('/summary.html')">观点分析</el-menu-item>
-        </el-menu>
+            </el-menu>
         </el-header>
         <el-main>
-
+            <el-form @submit.prevent="handleSearch" class="form-inline">
+                <el-form-item>
+                    <el-input v-model="searchText" placeholder="请输入id号"></el-input>
+                </el-form-item>
+                <el-form-item>
+                    <el-button type="primary" plain @click="handleSearch">提交</el-button>
+                </el-form-item>
+            </el-form>
+            <div class="results-container">
+                <div class="wordcloud-container" v-if="wordCloudUrl">
+                    <h3>词云图</h3>
+                    <img :src="wordCloudUrl" alt="词云图">
+                </div>
+                <div class="summary-container" style="text-align: center;">
+                    <h3>观点总结</h3>
+                    <el-table :data="wordsList" style="width: 100%; margin-left: auto; margin-right: auto;">
+                        <el-table-column prop="words" label="关键词" width="200" style="padding-left: 20px;"></el-table-column>
+                        <el-table-column prop="count" label="数量"></el-table-column>
+                    </el-table>
+                </div>
+            </div>
         </el-main>
     </el-container>
 </div>
 
-</body>
 <script>
     new Vue({
-        el:'#app',
-        data:{
-            activeMenu:'4'
+        el: '#app',
+        data: {
+            activeMenu: '4',
+            searchText: '',
+            commentList: [],
+            comment: [],
+            wordsList: [],
+            wordCloudUrl: 'loading.png',
         },
-        created:function (){
-
+        created: function () {
         },
-        methods:{
+        methods: {
             navigate(url) {
                 window.location.href = url;
+            },
+            async handleSearch() {
+                this.commentList = []
+                this.comment = []
+                try {
+                    const resp = await axios.get('/info', {
+                        params: {hupuId: this.searchText}
+                    });
+                    if (resp.data.code == 1) {
+                        this.comment = resp.data.data
+                        this.commentList = resp.data.data.reviews.map(review => review.review)
+                        await this.makeSummary(this.commentList)
+                    } else {
+                        console.error('获取失败');
+                    }
+                } catch (error) {
+                    console.error('获取失败', error);
+                }
+            },
+            async makeSummary(commentList) {
+                try {
+                    const resp = await axios.post('http://127.0.0.1:5000/generate_wordcloud', {comments: commentList}, {
+                        headers: {'Content-Type': 'application/json'}
+                    });
+                    if (resp.data) {
+                        this.wordsList = resp.data.summary.map(item => ({
+                            words: item[0],
+                            count: item[1]
+                        }));
+                        this.wordCloudUrl = resp.data.image;
+                    } else {
+                        console.error('检查失败：无返回数据');
+                    }
+                } catch (error) {
+                    console.error('检查失败', error.response ? error.response.data : error.message);
+                }
             }
         }
     })
 </script>
+</body>
 </html>

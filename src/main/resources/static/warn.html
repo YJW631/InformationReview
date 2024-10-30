@@ -71,14 +71,14 @@
                     <el-button type="primary" @click="addSensitiveWords">提交</el-button>
                 </el-form-item>
             </el-form>
-            <form class="navbar-form navbar-left" @submit.prevent="handleSearch"
-                  style="display: flex; align-items: center;">
-                <div class="form-group">
-                    <input type="text" class="form-control" placeholder="请输入id号" v-model="searchText"
-                           style="width: 420px; margin-right: 5px;">
-                </div>
-                <el-button type="primary" plain @click="handleSearch" style="height: 34px;">搜索</el-button>
-            </form>
+            <el-form @submit.prevent="handleSearch" class="form-inline">
+                <el-form-item>
+                    <el-input v-model="searchText" placeholder="请输入id号"></el-input>
+                </el-form-item>
+                <el-form-item>
+                    <el-button type="primary" plain @click="handleSearch">提交</el-button>
+                </el-form-item>
+            </el-form>
             <template>
                 <el-table
                         :data="warnList"
