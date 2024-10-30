@@ -13,22 +13,35 @@
             margin: 0; /* 去掉默认的外边距 */
             padding: 0; /* 去掉默认的内边距 */
         }
-        .el-container{
+
+        .el-container {
             height: 100%;
         }
-        .el-header{
+
+        .el-header {
             background-color: azure;
             color: #333;
             text-align: center;
         }
+
         .el-main {
             background-color: white;
             color: #333;
             text-align: center;
         }
-        .el-menu{
+
+        .el-menu {
             background-color: azure;
             width: 100%;
+        }
+
+        .form-inline {
+            display: flex;
+            align-items: center;
+        }
+
+        .form-inline .el-form-item {
+            margin-right: 20px;
         }
     </style>
 </head>
@@ -41,10 +54,64 @@
                 <el-menu-item index="2" @click="navigate('/info.html')">评论</el-menu-item>
                 <el-menu-item index="3" @click="navigate('/warn.html')">安全审查</el-menu-item>
                 <el-menu-item index="4" @click="navigate('/summary.html')">观点分析</el-menu-item>
-        </el-menu>
+            </el-menu>
         </el-header>
         <el-main>
+            <el-form @submit.prevent="addSensitiveWords" class="form-inline">
+                <el-form-item>
+                    <el-select v-model="warnWordCategory" placeholder="请选择类别">
+                        <el-option v-for="item in categories" :key="item.value" :label="item.label"
+                                   :value="item.value"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item>
+                    <el-input v-model="warnWord" placeholder="请输入文本"></el-input>
+                </el-form-item>
+                <el-form-item>
+                    <el-button type="primary" @click="addSensitiveWords">提交</el-button>
+                </el-form-item>
+            </el-form>
+            <form class="navbar-form navbar-left" @submit.prevent="handleSearch"
+                  style="display: flex; align-items: center;">
+                <div class="form-group">
+                    <input type="text" class="form-control" placeholder="请输入id号" v-model="searchText"
+                           style="width: 420px; margin-right: 5px;">
+                </div>
+                <el-button type="primary" plain @click="handleSearch" style="height: 34px;">搜索</el-button>
+            </form>
+            <template>
+                <el-table
+                        :data="warnList"
+                        style="width: 100%">
+                    <el-table-column
+                            label="序号"
+                            width="100">
+                        <template slot-scope="scope">
+                            {{ scope.$index + 1 }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column
+                            prop="originalText"
+                            label="原评论"
+                            width="600">
+                    </el-table-column>
+                    <el-table-column
+                            prop="grade"
+                            label="安全等级"
+                            width="100">
+                        <template slot-scope="scope">
+    <span :style="{ color: scope.row.grade === 0 ? 'green' : scope.row.grade === 1 ? 'red' : 'orange' }">
+      {{ scope.row.grade === 0 ? '安全' : scope.row.grade === 1 ? '危险' : '广告' }}
+    </span>
+                        </template>
+                    </el-table-column>
 
+                    <el-table-column
+                            prop="showText"
+                            label="展示评论">
+                    </el-table-column>
+                </el-table>
+            </template>
         </el-main>
     </el-container>
 </div>
@@ -52,17 +119,128 @@
 </body>
 <script>
     new Vue({
-        el:'#app',
-        data:{
-            activeMenu:'3'
+        el: '#app',
+        data: {
+            activeMenu: '3',
+            commentList: [],
+            warnList: [],
+            searchText: '',
+            comment: [],
+            warnWordCategory: '',
+            warnWord: '',
+            warnWordList: [],
+            categories: [
+                {label: '政治', value: '政治'},
+                {label: '社会', value: '社会'},
+                {label: '色情', value: '色情'},
+                {label: '暴恐', value: '暴恐'},
+                {label: '反动', value: '反动'},
+                {label: '赌博', value: '赌博'},
+                {label: '其他', value: '其他'}
+            ]
         },
-        created:function (){
+        created: function () {
 
         },
-        methods:{
+        methods: {
             navigate(url) {
                 window.location.href = url;
+            },
+            async handleSearch() {
+                this.commentList = []
+                this.warnList = []
+                this.comment = []
+                this.addWords()
+                try {
+                    const resp = await axios.get('/info', {
+                        params: {
+                            hupuId: this.searchText
+                        }
+                    });
+                    if (resp.data.code == 1) {
+                        this.comment = resp.data.data
+                        this.commentList = resp.data.data.reviews
+                        this.commentList.map(comment => this.checkSensitive(comment.review))
+                        this.sleep(500).then(() => {
+                            this.subWords()
+                            this.warnWordList = []
+                        })
+                    } else {
+                        console.error('获取失败');
+                    }
+                } catch (error) {
+                    console.error('获取失败', error);
+                }
+            },
+            async checkSensitive(comment) {
+                try {
+                    const resp = await axios.post('http://127.0.0.1:4000/sensitive', {txt: comment},
+                        {headers: {'Content-Type': 'application/json'}});
+                    if (resp.data) {
+                        const fieldCount = Object.keys(resp.data).length;
+                        let warnComment = {
+                            originalText: resp.data.txt,
+                            showText: resp.data.txtReplace,
+                            grade: 0
+                        };
+                        if (fieldCount === 9) {
+                            if (resp.data.sensitiveWordCount === 0) {
+                                warnComment.grade = 0; // 安全
+                            } else {
+                                warnComment.grade = 1; // 危险
+                            }
+                        } else {
+                            warnComment = {
+                                originalText: resp.data.txt,
+                                grade: 2, // 广告
+                                showText: resp.data.regularResult
+                            };
+                        }
+                        this.warnList.push(warnComment);
+                    } else {
+                        console.error('检查失败：无返回数据');
+                    }
+                } catch (error) {
+                    console.error('检查失败', error.response ? error.response.data : error.message);
+                }
+            },
+            addSensitiveWords() {
+                this.warnWordList.push(this.warnWordCategory + '\t' + this.warnWord)
+                this.warnWordCategory = ''
+                this.warnWord = ''
+            },
+            async addWords() {
+                try {
+                    const resp = await axios.post('/add', {words: this.warnWordList},
+                        {headers: {'Content-Type': 'application/json'}});
+                    if (resp.data) {
+
+                    } else {
+                        console.error('添加失败：无返回数据');
+                    }
+                } catch (error) {
+                    console.error('添加失败', error.response ? error.response.data : error.message);
+                }
+            },
+            async subWords() {
+                try {
+                    const length = this.warnWordList.length;
+                    const resp = await axios.delete(`/sub?length=${length}`, {
+                        headers: {'Content-Type': 'application/json'}
+                    });
+                    if (resp.data) {
+                        console.log('删除成功'); // 添加成功后的处理逻辑
+                    } else {
+                        console.error('删除失败：无返回数据');
+                    }
+                } catch (error) {
+                    console.error('删除失败', error.response ? error.response.data : error.message);
+                }
+            },
+            sleep(time) {
+                return new Promise((resolve) => setTimeout(resolve, time));
             }
+
         }
     })
 </script>
