@@ -71,6 +71,20 @@
                     <el-button type="primary" @click="addSensitiveWords">提交</el-button>
                 </el-form-item>
             </el-form>
+
+            <!-- 添加展示敏感词区域 -->
+            <div v-if="processedWarnWordList.length > 0">
+                <h3>已添加的敏感词</h3>
+                <div>
+                    <el-tag
+                            v-for="(word, index) in processedWarnWordList"
+                            :key="index"
+                            style="margin: 5px;">
+                        {{ word }}
+                    </el-tag>
+                </div>
+            </div>
+
             <el-form @submit.prevent="handleSearch" class="form-inline">
                 <el-form-item>
                     <el-input v-model="searchText" placeholder="请输入id号"></el-input>
@@ -129,6 +143,7 @@
             warnWordCategory: '',
             warnWord: '',
             warnWordList: [],
+            processedWarnWordList:[],
             categories: [
                 {label: '政治', value: '政治'},
                 {label: '社会', value: '社会'},
@@ -164,6 +179,7 @@
                         this.sleep(500).then(() => {
                             this.subWords()
                             this.warnWordList = []
+                            this.processedWarnWordList=[]
                         })
                     } else {
                         console.error('获取失败');
@@ -205,19 +221,21 @@
                 }
             },
             addSensitiveWords() {
-                this.warnWordList.push(this.warnWordCategory + '\t' + this.warnWord)
-                this.warnWordCategory = ''
-                this.warnWord = ''
+                this.warnWordList.push({word: this.warnWordCategory + '\t' + this.warnWord});
+                this.processedWarnWordList.push(this.warnWordCategory+' '+this.warnWord);
+                this.warnWordCategory = '';
+                this.warnWord = '';
             },
             async addWords() {
                 try {
-                    const resp = await axios.post('/add', {words: this.warnWordList},
+                    const resp = await axios.post('/add', {words: this.warnWordList.map(w => w.word)},
                         {headers: {'Content-Type': 'application/json'}});
                     if (resp.data) {
 
                     } else {
                         console.error('添加失败：无返回数据');
                     }
+
                 } catch (error) {
                     console.error('添加失败', error.response ? error.response.data : error.message);
                 }

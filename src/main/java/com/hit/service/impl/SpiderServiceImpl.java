@@ -1,15 +1,14 @@
 package com.hit.service.impl;
 
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
+import com.hit.mapper.CommentMapper;
 import com.hit.pojo.Result;
 import com.hit.service.SpiderService;
 import com.hit.vo.*;
-import com.sun.org.apache.bcel.internal.generic.GOTO;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -21,6 +20,9 @@ import java.util.Map;
 public class SpiderServiceImpl implements SpiderService {
 
     private static final String URL = "https://bbs.hupu.com";//虎扑论坛基本url
+
+    @Autowired
+    private CommentMapper commentMapper;
 
     @Override
     public Result getHotTitle() {//获取热榜标题
@@ -38,67 +40,38 @@ public class SpiderServiceImpl implements SpiderService {
 
     @Override
     public Comment getComments(String hupuId) {
-        List<Review> commentList = new ArrayList<>();
         Comment comment = new Comment();
         comment.setHupuId(hupuId);
-        int count = 0;
-        int pageId = 1;
-        int lastPage = 1;
-        try {
-            Document document = Jsoup.connect("https://bbs.hupu.com/" + hupuId + ".html")
-                    .ignoreContentType(true)
-                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36")
-                    .get();
-            Elements paginationItems = document.select(".hupu-rc-pagination-item a");
-            String lastPageStr = null;
-            for (Element paginationItem : paginationItems) {
-                lastPageStr = paginationItem.text();
-            }
-            lastPage = Integer.parseInt(lastPageStr);
-            Map<String, String> topicIdList = new HashMap<>();
-            topicIdList.put("/cba","173");
-            topicIdList.put("/topic-daily","1");
-            Elements topicLinks = document.select(".post-user_post-user-comp-info-bottom-from__6aulb a.post-user_post-user-comp-info-bottom-link__BMF8U");
-            String topicStr = null;
-            for (Element topicLink : topicLinks){
-                topicStr=topicLink.attr("href");
-            }
-            if(topicIdList.get(topicStr)!=null){
-                comment.setTopicId(topicIdList.get(topicStr));
-            }else {
-                comment.setTopicId("1");
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        try {
-            Thread.sleep(1000 * 3);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-        while (count < 50 && pageId <= lastPage) {
+        long nowMills = System.currentTimeMillis();
+        List<Review> storedCommentList = commentMapper.getComments(hupuId, nowMills);
+        if (storedCommentList.size() == 0) {
+            List<Review> commentList = new ArrayList<>();
+            int count = 0;
+            int pageId = 1;
+            int lastPage = 1;
             try {
-                Document document = Jsoup.connect("https://bbs.hupu.com/" + hupuId + "-" + pageId + ".html")
+                Document document = Jsoup.connect("https://bbs.hupu.com/" + hupuId + ".html")
                         .ignoreContentType(true)
                         .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36")
                         .get();
-//                Elements comments = document.select(".post-wrapper_gray__HNv4A .post-reply-list-content .thread-content-detail p");
-                Elements comments = document.select(".post-wrapper_gray__HNv4A .post-reply-list");
-                for (Element commentElement : comments) {
-                    String commentId = commentElement.select("span").attr("id");
-                    Elements commentDetails = commentElement.select(".post-reply-list-content .thread-content-detail p");
-                    if (count >= 50) {
-                        break;
-                    }
-                    for (Element detail : commentDetails) {
-                        if (detail.select("img").isEmpty()) {
-                            Review review = new Review();
-                            review.setReview(detail.text().trim());
-                            review.setPid(commentId);
-                            commentList.add(review);
-                            count++;
-                        }
-                    }
+                Elements paginationItems = document.select(".hupu-rc-pagination-item a");
+                String lastPageStr = null;
+                for (Element paginationItem : paginationItems) {
+                    lastPageStr = paginationItem.text();
+                }
+                lastPage = Integer.parseInt(lastPageStr);
+                Map<String, String> topicIdList = new HashMap<>();
+                topicIdList.put("/cba", "173");
+                topicIdList.put("/topic-daily", "1");
+                Elements topicLinks = document.select(".post-user_post-user-comp-info-bottom-from__6aulb a.post-user_post-user-comp-info-bottom-link__BMF8U");
+                String topicStr = null;
+                for (Element topicLink : topicLinks) {
+                    topicStr = topicLink.attr("href");
+                }
+                if (topicIdList.get(topicStr) != null) {
+                    comment.setTopicId(topicIdList.get(topicStr));
+                } else {
+                    comment.setTopicId("1");
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -108,9 +81,48 @@ public class SpiderServiceImpl implements SpiderService {
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
-            pageId++;
+            while (count < 50 && pageId <= lastPage) {
+                try {
+                    Document document = Jsoup.connect("https://bbs.hupu.com/" + hupuId + "-" + pageId + ".html")
+                            .ignoreContentType(true)
+                            .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36")
+                            .get();
+//                Elements comments = document.select(".post-wrapper_gray__HNv4A .post-reply-list-content .thread-content-detail p");
+                    Elements comments = document.select(".post-wrapper_gray__HNv4A .post-reply-list");
+                    for (Element commentElement : comments) {
+                        String commentId = commentElement.select("span").attr("id");
+                        Elements commentDetails = commentElement.select(".post-reply-list-content .thread-content-detail p");
+                        if (count >= 50) {
+                            break;
+                        }
+                        for (Element detail : commentDetails) {
+                            if (detail.select("img").isEmpty()) {
+                                Review review = new Review();
+                                review.setReview(detail.text().trim());
+                                review.setPid(commentId);
+                                commentList.add(review);
+                                count++;
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                try {
+                    Thread.sleep(1000 * 3);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                pageId++;
+            }
+            comment.setReviews(commentList);
+            for (Review review : commentList) {
+                commentMapper.insert(hupuId, comment.getTopicId(), review.getPid(), review.getReview(), nowMills);
+            }
+        } else {
+            comment.setReviews(storedCommentList);
+            comment.setTopicId(commentMapper.selectTopicId(hupuId));
         }
-        comment.setReviews(commentList);
         return comment;
     }
 
