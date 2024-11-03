@@ -1,6 +1,7 @@
 package com.hit.mapper;
 
 import com.hit.vo.Review;
+import com.hit.vo.UserReview;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;

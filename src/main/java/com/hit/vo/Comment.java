@@ -18,7 +18,7 @@ public class Comment {
     private String topicId;
     /**
      * 帖子的评论
-     * 记录前三十条
+     * 记录前五十条
      */
     private List<Review> reviews;
 }

@@ -19,5 +19,10 @@ public class userController {
         return Result.success(spiderService.getInterestedField(userId));
     }
 
+    @GetMapping("/summary")
+    public Result summaryUser(@RequestParam(name = "userId") String userId) {
+        return Result.success(spiderService.getUserComment(userId));
+    }
+
 
 }
