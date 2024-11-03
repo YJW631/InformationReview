@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>用户</title>
+    <meta http-equiv="content-type" content="text/html;charset=UTF-8">
+    <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.7.1/jquery.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css"
+          integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap-theme.min.css"
+          integrity="sha384-6pzBo3FDv/PJ8r2KRkGHifhEocL+1X2rVCTTkUfGk7/0pbek5mMa1upzvWbrUbOZ" crossorigin="anonymous">
+    <script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js"
+            integrity="sha384-aJ21OjlMXNL5UyIl/XNwTMqvzeRMZH2w8c5cRVpzpU8Y5bApTppSuUkhZXN0VxHd"
+            crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        html, body, #app {
+            height: 100%;
+            margin: 0; /* 去掉默认的外边距 */
+            padding: 0; /* 去掉默认的内边距 */
+        }
+
+        .el-container {
+            height: 100%;
+        }
+
+        .el-header {
+            background-color: azure;
+            color: #333;
+            text-align: center;
+        }
+
+        .el-main {
+            background-color: white;
+            color: #333;
+            text-align: center;
+        }
+
+        .el-menu {
+            background-color: azure;
+            width: 100%;
+        }
+
+        .radio-item {
+            display: block;
+            margin-bottom: 10px;
+            text-align: left;
+        }
+
+        .content-container {
+            width: 500px;
+            height: 500px;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <el-container>
+        <el-header>
+            <el-menu :default-active="activeMenu" mode="horizontal">
+                <el-menu-item index="1" @click="navigate('/index.html')">热帖榜</el-menu-item>
+                <el-menu-item index="2" @click="navigate('/info.html')">评论</el-menu-item>
+                <el-menu-item index="3" @click="navigate('/warn.html')">安全审查</el-menu-item>
+                <el-menu-item index="4" @click="navigate('/summary.html')">观点分析</el-menu-item>
+                <el-menu-item index="5" @click="navigate('/user.html')">用户描绘</el-menu-item>
+            </el-menu>
+        </el-header>
+        <el-main>
+            <form class="navbar-form navbar-left" @submit.prevent="handleSearch"
+                  style="display: flex; align-items: center;">
+                <div class="form-group">
+                    <input type="text" class="form-control" placeholder="请输入id号" v-model="searchText"
+                           style="width: 420px; margin-right: 5px;">
+                </div>
+                <el-button type="primary" plain @click="handleSearch" style="height: 34px;">搜索</el-button>
+            </form>
+            <div class="content-container">
+                <div class="chart-container">
+                    <canvas id="myPieChart" width="400px" height="400px"></canvas>
+                </div>
+            </div>
+        </el-main>
+    </el-container>
+</div>
+
+</body>
+<script>
+    new Vue({
+        el: '#app',
+        data: {
+            activeMenu: '5',
+            searchText: '',
+            fieldList: {},
+            myPieChart: null  // 初始化为null
+        },
+        created: function () {
+
+        },
+        methods: {
+            navigate(url) {
+                window.location.href = url;
+            },
+            async handleSearch() {
+                if (this.myPieChart) {
+                    this.myPieChart.destroy();
+                }
+                try {
+                    const resp = await axios.get('/iField', {
+                        params: {
+                            userId: this.searchText
+                        }
+                    });
+                    if (resp.data.code == 1) {
+                        this.fieldList = resp.data.data
+                        let labels = Object.keys(this.fieldList);
+                        let data = Object.values(this.fieldList);
+                        let ctx = document.getElementById('myPieChart').getContext('2d');
+                        let chartData = {
+                            labels: labels,
+                            datasets: [{
+                                data: data,
+                                backgroundColor: labels.map((label, index) => `hsl(${index * 360 / labels.length}, 70%, 50%)`)
+                            }]
+                        };
+
+                        let options = {
+                            responsive: true,
+                            plugins: {
+                                legend: {
+                                    position: 'top',
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(tooltipItem) {
+                                            return tooltipItem.label + ': ' + tooltipItem.raw;
+                                        }
+                                    }
+                                }
+                            }
+                        };
+
+                        this.myPieChart = new Chart(ctx, {
+                            type: 'pie',
+                            data: chartData,
+                            options: options
+                        });
+                    } else {
+                        console.error('获取失败');
+                    }
+                } catch (error) {
+                    console.error('获取失败', error);
+                }
+            }
+        }
+    })
+</script>
+</html>
