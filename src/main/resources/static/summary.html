@@ -49,13 +49,22 @@
         .results-container {
             display: flex;
             width: 100%;
+            justify-content: space-between; /* 使两个部分之间有间隔 */
         }
 
-        .wordcloud-container, .summary-container {
-            flex: 1;
+        .wordcloud-container {
+            flex: 1; /* 词云图占用剩余空间 */
+            padding: 20px;
+            text-align: center;
+            margin-right: 10px; /* 增加右边距 */
+        }
+
+        .summary-container {
+            width: 300px; /* 固定宽度为300px */
             padding: 20px;
             text-align: center;
         }
+
         .form-inline {
             display: flex;
             align-items: center;
@@ -63,6 +72,11 @@
 
         .form-inline .el-form-item {
             margin-right: 20px;
+        }
+
+        img {
+            max-width: 100%; /* 确保图片自适应宽度 */
+            height: auto; /* 高度自适应 */
         }
     </style>
 </head>

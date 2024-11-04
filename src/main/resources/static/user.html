@@ -19,8 +19,8 @@
     <style>
         html, body, #app {
             height: 100%;
-            margin: 0; /* 去掉默认的外边距 */
-            padding: 0; /* 去掉默认的内边距 */
+            margin: 0;
+            padding: 0;
         }
 
         .el-container {
@@ -44,17 +44,45 @@
             width: 100%;
         }
 
-        .radio-item {
-            display: block;
-            margin-bottom: 10px;
-            text-align: left;
+        .content-container {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
         }
 
-        .content-container {
-            width: 500px;
-            height: 500px;
+        .chart-container {
+            flex: 0 0 40%; /* 固定宽度为40% */
+            height: 400px;
+            margin-right: 10px; /* 右边距以增加间隔 */
+            box-sizing: border-box;
+        }
+
+        .results-container {
+            flex: 1; /* 占用剩余空间 */
+            height: 400px;
+            display: flex; /* 横向排列 */
+            align-items: flex-start; /* 顶部对齐 */
+            box-sizing: border-box;
+        }
+
+        .wordcloud-container {
+            flex: 1; /* 词云图占用剩余空间 */
+            text-align: center;
+            margin-right: 10px; /* 调整右边距 */
+        }
+
+        .summary-container {
+            flex: 0 0 200px; /* 固定宽度为200px */
+            text-align: center;
+        }
+
+        img {
+            max-width: 100%; /* 确保图片自适应宽度 */
+            height: auto; /* 高度自适应 */
         }
     </style>
+
 </head>
 <body>
 <div id="app">
@@ -77,9 +105,23 @@
                 </div>
                 <el-button type="primary" plain @click="handleSearch" style="height: 34px;">搜索</el-button>
             </form>
+            <!-- 这里将内容容器放在搜索框下方 -->
             <div class="content-container">
                 <div class="chart-container">
                     <canvas id="myPieChart" width="400px" height="400px"></canvas>
+                </div>
+                <div class="results-container" style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div class="wordcloud-container" v-if="wordCloudUrl">
+                        <h3>词云图</h3>
+                        <img :src="wordCloudUrl" alt="词云图">
+                    </div>
+                    <div class="summary-container" style="text-align: center;">
+                        <h3>观点总结</h3>
+                        <el-table :data="wordsList" style="width: 100%; margin-left: auto; margin-right: auto;">
+                            <el-table-column prop="words" label="关键词" width="200" style="padding-left: 20px;"></el-table-column>
+                            <el-table-column prop="count" label="数量"></el-table-column>
+                        </el-table>
+                    </div>
                 </div>
             </div>
         </el-main>
@@ -94,7 +136,10 @@
             activeMenu: '5',
             searchText: '',
             fieldList: {},
-            myPieChart: null  // 初始化为null
+            myPieChart: null,
+            commentList: [],
+            wordsList: [],
+            wordCloudUrl: ''
         },
         created: function () {
 
@@ -104,6 +149,20 @@
                 window.location.href = url;
             },
             async handleSearch() {
+                this.commentList = []
+                try {
+                    const resp = await axios.get('/summary', {
+                        params: { userId: this.searchText }
+                    });
+                    if (resp.data.code == 1) {
+                        this.commentList = resp.data.data.map(item => item.review);
+                        await this.makeSummary(this.commentList)
+                    } else {
+                        console.error('获取失败');
+                    }
+                } catch (error) {
+                    console.error('获取失败', error);
+                }
                 if (this.myPieChart) {
                     this.myPieChart.destroy();
                 }
@@ -134,7 +193,7 @@
                                 },
                                 tooltip: {
                                     callbacks: {
-                                        label: function(tooltipItem) {
+                                        label: function (tooltipItem) {
                                             return tooltipItem.label + ': ' + tooltipItem.raw;
                                         }
                                     }
@@ -152,6 +211,24 @@
                     }
                 } catch (error) {
                     console.error('获取失败', error);
+                }
+            },
+            async makeSummary(commentList) {
+                try {
+                    const resp = await axios.post('http://127.0.0.1:5000/generate_wordcloud', { comments: commentList }, {
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    if (resp.data) {
+                        this.wordsList = resp.data.summary.map(item => ({
+                            words: item[0],
+                            count: item[1]
+                        }));
+                        this.wordCloudUrl = resp.data.image;
+                    } else {
+                        console.error('检查失败：无返回数据');
+                    }
+                } catch (error) {
+                    console.error('检查失败', error.response ? error.response.data : error.message);
                 }
             }
         }
