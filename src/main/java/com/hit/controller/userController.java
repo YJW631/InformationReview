@@ -24,5 +24,4 @@ public class userController {
         return Result.success(spiderService.getUserComment(userId));
     }
 
-
 }

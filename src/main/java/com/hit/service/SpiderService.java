@@ -17,4 +17,6 @@ public interface SpiderService{
     Map<String, Integer> getInterestedField(String userId);
 
     List<UserReview> getUserComment(String userId);
+
+    List<String> getImages(String hupuId);
 }

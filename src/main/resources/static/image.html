@@ -2,6 +2,7 @@
 <head>
     <title>热帖榜</title>
     <meta http-equiv="content-type" content="text/html;charset=UTF-8">
+    <meta name="referrer" content="no-referrer" />
     <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.7.1/jquery.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
@@ -34,6 +35,20 @@
             background-color: azure;
             width: 100%;
         }
+
+        .image-list {
+            margin-top: 20px;
+        }
+
+        .image-item {
+            margin: 10px;
+            width: 100%;
+            height: auto;
+        }
+
+        .url-link {
+            word-break: break-all; /* 防止长URL超出容器 */
+        }
     </style>
 </head>
 <body>
@@ -50,51 +65,23 @@
             </el-menu>
         </el-header>
         <el-main>
-            <template>
-                <el-table
-                        :data="hotInfo"
-                        style="width: 100%">
-                    <el-table-column
-                            prop="label"
-                            label="板块"
-                            width="100">
-                    </el-table-column>
-                    <el-table-column
-                            prop="hupuId"
-                            label="id号"
-                            width="150">
+            <form class="navbar-form navbar-left" @submit.prevent="handleSearch"
+                  style="display: flex; align-items: center;">
+                <div class="form-group">
+                    <input type="text" class="form-control" placeholder="请输入id号" v-model="searchText"
+                           style="width: 420px; margin-right: 5px;">
+                </div>
+                <el-button type="primary" plain @click="handleSearch" style="height: 34px;">搜索</el-button>
+            </form>
+            <div class="image-list">
+                <el-table :data="imageUrls" style="width: 100%">
+                    <el-table-column prop="url" label="图片链接">
                         <template slot-scope="scope">
-                            <el-tooltip content="点击复制" placement="top">
-          <span @click="copyToClipboard(scope.row.hupuId)" style="cursor: pointer; color: #32a2a8;">
-            {{ scope.row.hupuId }}
-          </span>
-                            </el-tooltip>
-                        </template>
-                    </el-table-column>
-                    <el-table-column
-                            prop="title"
-                            label="标题及描述"
-                            width="600">
-                    </el-table-column>
-                    <el-table-column
-                            prop="lightNum"
-                            label="点亮数"
-                            width="100">
-                    </el-table-column>
-                    <el-table-column
-                            prop="repliesNum"
-                            label="评论数"
-                            width="100">
-                    </el-table-column>
-                    <el-table-column
-                            prop="url"
-                            label="地址">
-                        <template slot-scope="scope">
-                            <a :href="scope.row.url" target="_blank">{{ scope.row.url }}</a>
+                            <a :href="scope.row" target="_blank" class="url-link">{{ scope.row }}</a>
                         </template>
                     </el-table-column>
                 </el-table>
-            </template>
+            </div>
         </el-main>
     </el-container>
 </div>
@@ -104,38 +91,32 @@
     new Vue({
         el: '#app',
         data: {
-            activeMenu: '1',
-            hotInfo: []
+            activeMenu: '6',
+            searchText: '',
+            imageUrls: []
         },
         created: function () {
-            this.getHotInfo();
+
         },
         methods: {
             navigate(url) {
                 window.location.href = url;
             },
-            async getHotInfo() {//获取当前热门话题列表
+            async handleSearch() {
                 try {
-                    const resp = await axios.get('/hot', {});
+                    const resp = await axios.get('/image', {
+                        params: {
+                            hupuId: this.searchText
+                        }
+                    });
                     if (resp.data.code == 1) {
-                        resp.data.data.forEach(item => {
-                            item.huPuList.forEach(hupu => {
-                                this.hotInfo.push(hupu);
-                            });
-                        });
+                        this.imageUrls = resp.data.data;
                     } else {
-                        console.error('获取失败', error);
+                        console.error('获取失败');
                     }
                 } catch (error) {
                     console.error('获取失败', error);
                 }
-            },
-            copyToClipboard(text) {
-                navigator.clipboard.writeText(text).then(() => {
-                    this.$message.success('复制成功!');
-                }).catch(err => {
-                    console.error('复制失败: ', err);
-                });
             }
         }
     })

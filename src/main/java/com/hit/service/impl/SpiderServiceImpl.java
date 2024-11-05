@@ -1,6 +1,7 @@
 package com.hit.service.impl;
 
 import com.hit.mapper.CommentMapper;
+import com.hit.mapper.ImageMapper;
 import com.hit.mapper.UserReviewMapper;
 import com.hit.pojo.Result;
 import com.hit.service.SpiderService;
@@ -34,6 +35,9 @@ public class SpiderServiceImpl implements SpiderService {
 
     @Autowired
     private UserReviewMapper userReviewMapper;
+
+    @Autowired
+    private ImageMapper imageMapper;
 
     @Override
     public Result getHotTitle() {//获取热榜标题
@@ -211,6 +215,68 @@ public class SpiderServiceImpl implements SpiderService {
             return storedUserReviewList;
         }
         return userReviewList;
+    }
+
+    @Override
+    public List<String> getImages(String hupuId) {
+        int count = 0;
+        int pageId = 1;
+        int lastPage = 1;
+        List<String> imageList=new ArrayList<>();
+        List<String> storedImageList=imageMapper.getImageUrls(hupuId);
+        if (storedImageList.size()!=0){
+            return storedImageList;
+        }else {
+            try {
+                Document document = Jsoup.connect("https://bbs.hupu.com/628756283.html")
+                        .ignoreContentType(true)
+                        .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36")
+                        .get();
+                Elements paginationItems = document.select(".hupu-rc-pagination-item a");
+                String lastPageStr = null;
+                for (Element paginationItem : paginationItems) {
+                    lastPageStr = paginationItem.text();
+                }
+                lastPage = Integer.parseInt(lastPageStr);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            try {
+                Thread.sleep(1000 * 3);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            while (count < 50 && pageId <= lastPage) {
+                try {
+                    Document document = Jsoup.connect("https://bbs.hupu.com/"+hupuId+"-" + pageId + ".html")
+                            .ignoreContentType(true)
+                            .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36")
+                            .get();
+                    Elements imgDivs  = document.select(".post-wrapper_gray__HNv4A div.thread-content-detail img");
+                    for (Element img : imgDivs) {
+                        String imgUrl = img.attr("src");
+                        if (count >= 50) {
+                            break;
+                        }
+                        if (imgUrl.contains("?")) {
+                            imgUrl = imgUrl.substring(0, imgUrl.indexOf('?'));
+                        }
+                        imageList.add(imgUrl);
+                        imageMapper.insert(hupuId,imgUrl);
+                        count++;
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                try {
+                    Thread.sleep(1000 * 3);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                pageId++;
+            }
+            return imageList;
+        }
     }
 
     private List<HuPuList> getItemList(Elements list) {//获取板块内帖子的概略信息
